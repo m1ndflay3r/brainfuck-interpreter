@@ -5,16 +5,33 @@
 # input handling (program load)
 bf_input="$1"
 
-# error if program input is blank
-[ -z "$bf_input" ] && {
-  print "Error: no input provided"
+# error printout if program input is blank
+blank_printout() {
+  print "Error: no input provided, or input file empty"
   print "       syntax: bf_run ./input_file"
   print "               bf_run $input"
+}
+
+# initial blank check
+[ -z "$bf_input" ] && {
+  blank_printout
+  return 1
 }
 
 # if input is file, read from file and make new input
 [ -f "$bf_input" ] && {
   bf_input=$(<"$bf_input")
+}
+
+# run blank check twice in case file is empty
+[ -z "$bf_input" ] && {
+  blank_printout
+  return 1
+}
+
+# streamfile defaults to /tmp/bf_streamfile if not user-defined
+[ -z "$streamfile" ] && {
+  streamfile=/tmp/bf_streamfile
 }
 
 # load zselect for micro-sleep
@@ -27,11 +44,16 @@ alias int="integer"
 declare -A tape # use associative array for tape as bf expects 0-index
 
 # variable declarations
-int pointer killflag
+int pointer killflag stream_offset=1
 
 # set memory limit to 1048576 (1mb) if undefined
 [ -z "$memlimit" ] && {
   int memlimit=1048576
+}
+
+((memlimit<1024)) && {
+  print "Error: memlimit cannot be smaller than 1024 (1kb)"
+  return 1
 }
 
 # valid instruction table
@@ -52,7 +74,8 @@ print_cell() {
   # convert from binary to hex
   local target=$(([##16]2#$tape[$pointer]))
   # since highest register value is FF (255) we can
-  # just treat as a single char rather than loop
+  # just treat as a single byte rather than loop
+  # and output corresponding byte with \x
   print -n "\x"$target""
 }
 
@@ -107,6 +130,23 @@ cell_decrement() {
   }
 }
 
+# read byte from input stream, replace value of current cell with read byte
+stream_read() {
+  # while this method is a bit inefficient, it allows
+  # us to externally modify streamfile mid-program
+  # and is more than fast enough for this use-case
+  local sr_working=$(([##2]$((0x$(printf "%02x" "'${"${"$(<$streamfile)"::$stream_offset}":$((stream_offset-1))}")))))
+  ((stream_offset++))
+  # normalize to 8 bits (0 pad)
+  ((${#sr_working}<8)) && {
+    until ((${#sr_working}==8)); do
+      sr_working="0"$sr_working""
+    done
+  }
+  # write to tape
+  tape[$pointer]="$sr_working"
+}
+
 ## main
 
 # while true mimics clock cycle
@@ -117,7 +157,7 @@ while true; do
   int breakflag=0
   while true; do
     # pop one char off input
-    bf_working=${bf_input: :1}
+    bf_working=${bf_input::1}
     bf_input=${bf_input:1}
     # if working is empty, we've reached end of program
     [ -z "$bf_working" ] && {
@@ -149,7 +189,7 @@ while true; do
     ('+') cell_increment ;;
     ('-') cell_decrement ;;
     ('.') print_cell ;;
-    (',') 
+    (',') stream_read ;;
     ('[')
     (']')
   esac
