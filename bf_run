@@ -44,7 +44,7 @@ alias int="integer"
 declare -A tape # use associative array for tape as bf expects 0-index
 
 # variable declarations
-int pointer killflag stream_offset=1
+int pointer killflag stream_offset=1 abortflag
 
 # set memory limit to 1048576 (1mb) if undefined
 [ -z "$memlimit" ] && {
@@ -94,7 +94,20 @@ pointer_increment() {
     # since we're emulating memory with an array, we can wrap safely without risking external memory safety
     # typically, you should not do this, especially if your bf interpreter is written in a low-level lang
     print "WARN: mem limit exceeded!"
-    print "there be monsters beyond this point"
+    print "There be monsters beyond this point."
+    responses=('y' 'Y' 'yes' 'Yes' 'YES' )
+    print -n "Continue anyway? (N/y) "
+    read do_cont
+    contflag=0
+    for resp in $responses[@]; do
+      [[ "$resp" = "$do_cont" ]] && {
+        contflag=1
+        break
+      }
+    done
+    (("$contflag"==0)) && {
+      ((abortflag++))
+    }
     ((pointer=0))
   } || {
     ((pointer++))
@@ -159,6 +172,8 @@ while true; do
     # pop one char off input
     bf_working=${bf_input::1}
     bf_input=${bf_input:1}
+    # we handle jump in this loop
+    
     # if working is empty, we've reached end of program
     [ -z "$bf_working" ] && {
       ((breakflag++))
@@ -190,7 +205,8 @@ while true; do
     ('-') cell_decrement ;;
     ('.') print_cell ;;
     (',') stream_read ;;
-    ('[')
-    (']')
   esac
+  ((abortflag==1)) && {
+    return 1
+  }
 done
