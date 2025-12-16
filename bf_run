@@ -1,0 +1,156 @@
+#!/usr/bin/env zsh
+
+## env setup
+
+# input handling (program load)
+bf_input="$1"
+
+# error if program input is blank
+[ -z "$bf_input" ] && {
+  print "Error: no input provided"
+  print "       syntax: bf_run ./input_file"
+  print "               bf_run $input"
+}
+
+# if input is file, read from file and make new input
+[ -f "$bf_input" ] && {
+  bf_input=$(<"$bf_input")
+}
+
+# load zselect for micro-sleep
+zmodload zsh/zselect
+
+# alias integer to int for brevity
+alias int="integer"
+
+# array declarations
+declare -A tape # use associative array for tape as bf expects 0-index
+
+# variable declarations
+int pointer killflag
+
+# set memory limit to 1048576 (1mb) if undefined
+[ -z "$memlimit" ] && {
+  int memlimit=1048576
+}
+
+# valid instruction table
+bf_instructions=('>'
+                 '<'
+                 '+'
+                 '-'
+                 '.'
+                 ','
+                 '['
+                 ']'
+                )
+
+## helper functions
+
+# output current cell contents
+print_cell() {
+  # convert from binary to hex
+  local target=$(([##16]2#$tape[$pointer]))
+  # since highest register value is FF (255) we can
+  # just treat as a single char rather than loop
+  print -n "\x"$target""
+}
+
+# decrease pointer by 1
+pointer_decrement() {
+  ((pointer==0)) && {
+    ((pointer=memlimit))
+  } || {
+    ((pointer--))
+  }
+}
+
+# increase pointer by 1
+pointer_increment() {
+  ((pointer==memlimit)) && {
+    # since we're emulating memory with an array, we can wrap safely without risking external memory safety
+    # typically, you should not do this, especially if your bf interpreter is written in a low-level lang
+    print "WARN: mem limit exceeded!"
+    print "there be monsters beyond this point"
+    ((pointer=0))
+  } || {
+    ((pointer++))
+  }
+}
+
+# increment current cell
+cell_increment() {
+  # fetch current val
+  current_val=$tape[$pointer]
+  # set to 00000000 if is 11111111 (255)
+  current_val=$((2#$current_val))
+  ((current_val>=255)) && {
+    tape[$pointer]=00000000
+  # else increment + store
+  } || {
+    ((current_val++))
+    tape[$pointer]=$(([##2]$current_val))
+  }
+}
+
+# decrement current cell
+cell_decrement() {
+  current_val=$tape[$pointer]
+  # set to 11111111 (255) if is 0
+  current_val=$((2#$current_val))
+  ((current_val==0)) && {
+    tape[$pointer]=11111111
+  # else decrement + store
+  } || {
+    ((current_val--))
+    tape[$pointer]=$(([##2]$current_val))
+  }
+}
+
+## main
+
+# while true mimics clock cycle
+while true; do
+  # read next instruction from input
+  # we use a loop for this since bf ignores chars
+  # which arent instructions
+  int breakflag=0
+  while true; do
+    # pop one char off input
+    bf_working=${bf_input: :1}
+    bf_input=${bf_input:1}
+    # if working is empty, we've reached end of program
+    [ -z "$bf_working" ] && {
+      ((breakflag++))
+      ((killflag++))
+      break
+    }
+    # check if valid instruction
+    for inst in $=bf_instructions; do
+      [ "$bf_working" = "$inst" ] && {
+        ((breakflag++))
+        break
+      }
+    done
+    # if instruction valid, breakflag should now be non-zero
+    # so we end instruction fetch loop
+    ((breakflag!=0)) && {
+      break
+    }
+  done
+  # if killflag isnt 0, we've reached end of program
+  ((killflag!=0)) && {
+    break
+  }
+  # instruction interpretation
+  case $bf_working in
+    ('<') pointer_decrement ;;
+    ('>') pointer_increment ;;
+    ('+') cell_increment ;;
+    ('-') cell_decrement ;;
+    ('.') print_cell ;;
+    (',') 
+    ('[')
+    (']')
+  esac
+done
