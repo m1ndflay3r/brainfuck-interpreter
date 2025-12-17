@@ -82,6 +82,23 @@ print_cell() {
 # decrease pointer by 1
 pointer_decrement() {
   ((pointer==0)) && {
+    # since we're emulating memory with an array, we can wrap semi-safely without risking external memory
+    # typically, you should not do this, especially if your bf interpreter is written in a low-level lang
+    print "WARN: mem limit exceeded!"
+    print "There be monsters beyond this point."
+    responses=('y' 'Y' 'yes' 'Yes' 'YES' )
+    print -n "Continue anyway? (N/y) "
+    read do_cont
+    contflag=0
+    for resp in $responses[@]; do
+      [[ "$resp" = "$do_cont" ]] && {
+        contflag=1
+        break
+      }
+    done
+    (("$contflag"==0)) && {
+      ((abortflag++))
+    }
     ((pointer=memlimit))
   } || {
     ((pointer--))
@@ -91,7 +108,7 @@ pointer_decrement() {
 # increase pointer by 1
 pointer_increment() {
   ((pointer==memlimit)) && {
-    # since we're emulating memory with an array, we can wrap safely without risking external memory safety
+    # since we're emulating memory with an array, we can wrap semi-safely without risking external memory
     # typically, you should not do this, especially if your bf interpreter is written in a low-level lang
     print "WARN: mem limit exceeded!"
     print "There be monsters beyond this point."
@@ -172,7 +189,7 @@ while true; do
     # pop one char off input
     bf_working=${bf_input::1}
     bf_input=${bf_input:1}
-    # we handle jump in this loop
+    ## we handle jump here
     
     # if working is empty, we've reached end of program
     [ -z "$bf_working" ] && {
