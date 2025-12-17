@@ -49,8 +49,12 @@ int pointer killflag stream_offset=1 abortflag
 # set memory limit to 1048576 (1mb) if undefined
 [ -z "$memlimit" ] && {
   int memlimit=1048576
+# else, set memlimit to 1048576 X memlimit
+} || {
+  int memlimit=$((1048576*memlimit))
 }
 
+# since it's possible to set mem lower than 1mb via setting memlimit to 0<N<1, we add this check
 ((memlimit<1024)) && {
   print "Error: memlimit cannot be smaller than 1024 (1kb)"
   return 1
@@ -63,8 +67,6 @@ bf_instructions=('>'
                  '-'
                  '.'
                  ','
-                 '['
-                 ']'
                 )
 
 ## helper functions
@@ -182,20 +184,66 @@ stream_read() {
 # while true mimics clock cycle
 while true; do
   # read next instruction from input
-  # we use a loop for this since bf ignores chars
-  # which arent instructions
+  # we use a loop for this since brainfuck ignores chars
+  # which aren't instructions
   int breakflag=0
   while true; do
     # pop one char off input
     bf_working=${bf_input::1}
     bf_input=${bf_input:1}
-    ## we handle jump here
-    
     # if working is empty, we've reached end of program
     [ -z "$bf_working" ] && {
       ((breakflag++))
       ((killflag++))
       break
+    }
+    ## we handle jump here
+    # treat uninitialized cell as 0
+    [ -z "$tape[$pointer]" ] && {
+      tape[$pointer]='0'
+    }
+    # if current instruction is ]
+    # (jump if not zero, aka L JMP)
+    [[ "$bf_working" = ']' ]] && {
+      mostrecent_ljmp="$bf_input"
+      # if pointer is not zero, jump
+      [[ "$tape[$pointer]" != 0 ]] && {
+        # if mostrecent_rjmp is empty, assume we
+        # havent encountered [ yet and abort
+        [ -z "$mostrecent_rjmp" ] && {
+          print "FATAL: encountered l_jmp but have not encountered closing bracket yet"
+          ((abortflag++))
+        }
+        bf_working=${mostrecent_rjmp: :1}
+        bf_input=${mostrecent_rjmp:1}
+      }
+    # else, if current working instruction is [
+    # (jump if zero, aka R JMP)
+    } || {
+      [[ "$bf_working" = '[' ]] && {
+        mostrecent_rjmp="$bf_input"
+        # if pointer is zero, jump
+        [[ "$tape[$pointer]" = 0 ]] && {
+          # begin iteration until we find closing bracket
+          while true; do
+            bf_working=${bf_input::1}
+            bf_input=${bf_input:1}
+            # if working is empty, we've reached end of program without finding closing brace.
+            # this is, naturally, a fatal error
+            [ -z "$bf_working" ] && {
+              print "FATAL: encountered r_jmp but found no closing bracket"
+              ((abortflag++))
+              break
+            }
+            # if bf_working is closing brace, we've found our mark.
+            # bf_input becomes new most recent l_jmp, and we break loop
+            [[ "$bf_working" = ']' ]] && {
+              mostrecent_ljmp="$bf_input"
+              break
+            }
+          done
+        }
+      }
     }
     # check if valid instruction
     for inst in $=bf_instructions; do
