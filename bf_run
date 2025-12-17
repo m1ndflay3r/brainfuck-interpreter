@@ -169,6 +169,10 @@ stream_read() {
   # and is more than fast enough for this use-case
   local sr_working=$(([##2]$((0x$(printf "%02x" "'${"${"$(<$streamfile)"::$stream_offset}":$((stream_offset-1))}")))))
   ((stream_offset++))
+  # if sr_working empty; treat as 0
+  [ -z "$sr_working" ] && {
+    sr_working=0
+  }
   # normalize to 8 bits (0 pad)
   ((${#sr_working}<8)) && {
     until ((${#sr_working}==8)); do
