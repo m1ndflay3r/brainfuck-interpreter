@@ -34,4 +34,10 @@ An example program (helloworld.bf) is included with this interpreter for testing
 
 You can run it like so:
 
-    ./bf_run helloworld.bf
+    ./bf_run examples/helloworld.bf
+
+Another example program (stream.bf) is included with this interpreter for streamfile demonstration.
+
+You can run it like so:
+
+    streamfile=examples/streamfile_ex ./bf_run examples/stream.bf
