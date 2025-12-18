@@ -7,9 +7,9 @@ bf_input="$1"
 
 # error printout if program input is blank
 blank_printout() {
-  print "Error: no input provided, or input file empty"
-  print "       syntax: bf_run ./input_file"
-  print "               bf_run $input"
+  print -u2 "Error: no input provided, or input file empty"
+  print -u2 "       syntax: bf_run ./input_file"
+  print -u2 "               bf_run <input>"
 }
 
 # initial blank check
@@ -34,17 +34,15 @@ blank_printout() {
   streamfile=/tmp/bf_streamfile
 }
 
-# load zselect for micro-sleep
-zmodload zsh/zselect
-
 # alias integer to int for brevity
 alias int="integer"
 
 # array declarations
-declare -A tape # use associative array for tape as bf expects 0-index
+declare -A tape
+declare -a loop_stack
 
 # variable declarations
-int pointer killflag stream_offset=1 abortflag
+int pointer killflag stream_offset abortflag
 
 # set memory limit to 1048576 (1mb) if undefined
 [ -z "$memlimit" ] && {
@@ -56,52 +54,36 @@ int pointer killflag stream_offset=1 abortflag
 
 # since it's possible to set mem lower than 1mb via setting memlimit to 0<N<1, we add this check
 ((memlimit<1024)) && {
-  print "Error: memlimit cannot be smaller than 1024 (1kb)"
+  print -u2 "Error: memlimit cannot be smaller than 1024 (1kb)"
   return 1
 }
-
-# valid instruction table
-bf_instructions=('>'
-                 '<'
-                 '+'
-                 '-'
-                 '.'
-                 ','
-                )
 
 ## helper functions
 
 # output current cell contents
 print_cell() {
-  # convert from binary to hex
-  local target=$(([##16]2#$tape[$pointer]))
-  # since highest register value is FF (255) we can
-  # just treat as a single byte rather than loop
-  # and output corresponding byte with \x
-  print -n "\x"$target""
+  # use %02x to ensure 2 digit hex
+  local target=${tape[$pointer]:-0}
+  printf "\\x$(printf %02x $target)"
 }
 
 # decrease pointer by 1
 pointer_decrement() {
   ((pointer==0)) && {
-    # since we're emulating memory with an array, we can wrap semi-safely without risking external memory
+    # since this is emulated memory using arrays, we can semi-safely wrap without risking memory of other processes
     # typically, you should not do this, especially if your bf interpreter is written in a low-level lang
-    print "WARN: mem limit exceeded!"
-    print "There be monsters beyond this point."
-    responses=('y' 'Y' 'yes' 'Yes' 'YES' )
-    print -n "Continue anyway? (N/y) "
-    read do_cont
-    contflag=0
-    for resp in $responses[@]; do
-      [[ "$resp" = "$do_cont" ]] && {
-        contflag=1
-        break
-      }
-    done
-    (("$contflag"==0)) && {
+    print -u2 "WARN: mem limit exceeded!"
+    print -u2 "There be monsters beyond this point."
+    print -n -u2 "Continue anyway? (N/y) "
+    # explicitly read from /dev/tty to avoid eating program input
+    read -k1 do_cont < /dev/tty
+    print -u2 # print newline after read for clean UI
+    [[ "$do_cont" = [yY] ]] && {
+      ((pointer=memlimit))
+    } || {
+      print "Segmentation Fault"
       ((abortflag++))
     }
-    ((pointer=memlimit))
   } || {
     ((pointer--))
   }
@@ -110,24 +92,19 @@ pointer_decrement() {
 # increase pointer by 1
 pointer_increment() {
   ((pointer==memlimit)) && {
-    # since we're emulating memory with an array, we can wrap semi-safely without risking external memory
+    # since this is emulated mem using arrays, we can semi-safely wrap without risking the memory of other processes
     # typically, you should not do this, especially if your bf interpreter is written in a low-level lang
-    print "WARN: mem limit exceeded!"
-    print "There be monsters beyond this point."
-    responses=('y' 'Y' 'yes' 'Yes' 'YES' )
-    print -n "Continue anyway? (N/y) "
-    read do_cont
-    contflag=0
-    for resp in $responses[@]; do
-      [[ "$resp" = "$do_cont" ]] && {
-        contflag=1
-        break
-      }
-    done
-    (("$contflag"==0)) && {
+    print -u2 "WARN: mem limit exceeded!"
+    print -u2 "There be monsters beyond this point."
+    print -n -u2 "Continue anyway? (N/y) "
+    read -k1 do_cont < /dev/tty
+    print -u2 # newline after read for clean U.I
+    [[ "$do_cont" = [yY] ]] && {
+      ((pointer=0))
+    } || {
+      print "Segmentation Fault"
       ((abortflag++))
     }
-    ((pointer=0))
   } || {
     ((pointer++))
   }
@@ -135,137 +112,44 @@ pointer_increment() {
 
 # increment current cell
 cell_increment() {
-  # fetch current val
-  current_val=$tape[$pointer]
-  # set to 00000000 if is 11111111 (255)
-  current_val=$((2#$current_val))
-  ((current_val>=255)) && {
-    tape[$pointer]=00000000
-  # else increment + store
-  } || {
-    ((current_val++))
-    tape[$pointer]=$(([##2]$current_val))
-  }
+  # note: we use bitmask to keep values within 255, and uninitialized cells are treated as zero
+  tape[$pointer]=$(((${tape[$pointer]:-0}+1)&255))
 }
 
 # decrement current cell
 cell_decrement() {
-  current_val=$tape[$pointer]
-  # set to 11111111 (255) if is 0
-  current_val=$((2#$current_val))
-  ((current_val==0)) && {
-    tape[$pointer]=11111111
-  # else decrement + store
-  } || {
-    ((current_val--))
-    tape[$pointer]=$(([##2]$current_val))
-  }
+  # note: we use bitmask to keep values within 255, and uninitialized cells are treated as zero
+  tape[$pointer]=$(((${tape[$pointer]:-0}-1)&255))
 }
 
-# read byte from input stream, replace value of current cell with read byte
+# read byte from input stream
 stream_read() {
-  # while this method is a bit inefficient, it allows
-  # us to externally modify streamfile mid-program
-  # and is more than fast enough for this use-case
-  local sr_working=$(([##2]$((0x$(printf "%02x" "'${"${"$(<$streamfile)"::$stream_offset}":$((stream_offset-1))}")))))
-  ((stream_offset++))
-  # if sr_working empty; treat as 0
-  [ -z "$sr_working" ] && {
-    sr_working=0
+  # while a bit inefficient, this method allows mid-program streamfile modification
+  # and is more than fast enough for our purposes
+  [[ -f "$streamfile" ]] && {
+    sr_working=${"$(<"$streamfile")":$stream_offset:1}
+    ((stream_offset++))
+    # if sr_working empty, treat as zero
+    [ -z "$sr_working" ] && {
+      tape[$pointer]=0
+    } || {
+      # conv sr_working to ascii, store in current cell
+      tape[$pointer]=$(printf "%d" "'$sr_working")
+    }
+  # if file not exist, treat as zero
+  } || {
+    tape[$pointer]=0
+    ((stream_offset++))
   }
-  # normalize to 8 bits (0 pad)
-  ((${#sr_working}<8)) && {
-    until ((${#sr_working}==8)); do
-      sr_working="0"$sr_working""
-    done
-  }
-  # write to tape
-  tape[$pointer]="$sr_working"
 }
 
 ## main
 
-# while true mimics clock cycle
 while true; do
-  # read next instruction from input
-  # we use a loop for this since brainfuck ignores chars
-  # which aren't instructions
-  int breakflag=0
-  while true; do
-    # pop one char off input
-    bf_working=${bf_input::1}
-    bf_input=${bf_input:1}
-    # if working is empty, we've reached end of program
-    [ -z "$bf_working" ] && {
-      ((breakflag++))
-      ((killflag++))
-      break
-    }
-    ## we handle jump here
-    # treat uninitialized cell as 0
-    [ -z "$tape[$pointer]" ] && {
-      tape[$pointer]='0'
-    }
-    # if current instruction is ]
-    # (jump if not zero, aka L JMP)
-    [[ "$bf_working" = ']' ]] && {
-      mostrecent_ljmp="$bf_input"
-      # if pointer is not zero, jump
-      [[ "$tape[$pointer]" != 0 ]] && {
-        # if mostrecent_rjmp is empty, assume we
-        # havent encountered [ yet and abort
-        [ -z "$mostrecent_rjmp" ] && {
-          print "FATAL: encountered l_jmp but have not encountered closing bracket yet"
-          ((abortflag++))
-        }
-        bf_working=${mostrecent_rjmp: :1}
-        bf_input=${mostrecent_rjmp:1}
-      }
-    # else, if current working instruction is [
-    # (jump if zero, aka R JMP)
-    } || {
-      [[ "$bf_working" = '[' ]] && {
-        mostrecent_rjmp="$bf_input"
-        # if pointer is zero, jump
-        [[ "$tape[$pointer]" = 0 ]] && {
-          # begin iteration until we find closing bracket
-          while true; do
-            bf_working=${bf_input::1}
-            bf_input=${bf_input:1}
-            # if working is empty, we've reached end of program without finding closing brace.
-            # this is, naturally, a fatal error
-            [ -z "$bf_working" ] && {
-              print "FATAL: encountered r_jmp but found no closing bracket"
-              ((abortflag++))
-              break
-            }
-            # if bf_working is closing brace, we've found our mark.
-            # bf_input becomes new most recent l_jmp, and we break loop
-            [[ "$bf_working" = ']' ]] && {
-              mostrecent_ljmp="$bf_input"
-              break
-            }
-          done
-        }
-      }
-    }
-    # check if valid instruction
-    for inst in $=bf_instructions; do
-      [ "$bf_working" = "$inst" ] && {
-        ((breakflag++))
-        break
-      }
-    done
-    # if instruction valid, breakflag should now be non-zero
-    # so we end instruction fetch loop
-    ((breakflag!=0)) && {
-      break
-    }
-  done
-  # if killflag isnt 0, we've reached end of program
-  ((killflag!=0)) && {
-    break
-  }
+  [ -z "$bf_input" ] && break
+  # pop one char off input
+  bf_working=${bf_input::1}
+  bf_input=${bf_input:1}
   # instruction interpretation
   case $bf_working in
     ('<') pointer_decrement ;;
@@ -274,8 +158,54 @@ while true; do
     ('-') cell_decrement ;;
     ('.') print_cell ;;
     (',') stream_read ;;
+    ('[')
+      ((${tape[$pointer]:-0} == 0)) && {
+      ## jump if zero
+        # depth flag keeps track of nested loops
+        int depth=1
+        # loop repeats while depth >= 1
+        while ((depth > 0)); do
+          # if bf_input empty, we've reached end of program without discovering [
+          # which according to brainfuck spec we must treat as a fatal error
+          [ -z "$bf_input" ] && {
+            print -u2 "FATAL: Unbalanced \'[\' (encountered r_jmp, but found no closing bracket)"
+            ((abortflag++))
+            return 1
+          }
+          # pop next char off stack
+          local next_char=${bf_input::1}
+          bf_input=${bf_input:1}
+          # if next char is '[', we've encountered a nested loop and must increase depth counter
+          [[ "$next_char" = "[" ]] && {
+            ((depth++))
+          }
+          # if next char is ']', we've encountered closing brace and must decrease depth counter
+          [[ "$next_char" = "]" ]] && {
+            ((depth--))
+          }
+        done
+      } || {
+      ## else push stack
+        loop_stack+=("$bf_input")
+      }
+    ;;
+    (']')
+      ((${tape[$pointer]:-0} != 0)) && {
+      ## jump if not zero
+        # if loop stack empty, we haven't encountered '[' yet.
+        # according to brainfuck spec, we treat this as a fatal error
+        ((${#loop_stack} == 0)) && {
+          print -u2 "FATAL: Unbalanced \']\' (encountered l_jmp, but found no closing bracket)"
+          return 1
+        }
+        # restore stack (revert to point of matching '[', thus completing l_jmp)
+        bf_input="${loop_stack[-1]}"
+      } || {
+      ## else pop stack
+        loop_stack[-1]=()
+      }
+    ;;
   esac
-  ((abortflag==1)) && {
-    return 1
-  }
+  ((abortflag>=1)) && return 1
 done
+
