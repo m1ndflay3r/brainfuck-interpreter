@@ -81,7 +81,7 @@ pointer_decrement() {
     [[ "$do_cont" = [yY] ]] && {
       ((pointer=memlimit))
     } || {
-      print "Segmentation Fault"
+      print -u2 "Segmentation Fault"
       ((abortflag++))
     }
   } || {
@@ -102,7 +102,7 @@ pointer_increment() {
     [[ "$do_cont" = [yY] ]] && {
       ((pointer=0))
     } || {
-      print "Segmentation Fault"
+      print -u2 "Segmentation Fault"
       ((abortflag++))
     }
   } || {
@@ -208,4 +208,3 @@ while true; do
   esac
   ((abortflag>=1)) && return 1
 done
-
