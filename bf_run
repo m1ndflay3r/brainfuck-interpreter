@@ -5,6 +5,9 @@
 # input handling (program load)
 bf_input="$1"
 
+# alias integer to int for brevity
+alias int="integer"
+
 # error printout if program input is blank
 blank_printout() {
   print -u2 "Error: no input provided, or input file empty"
@@ -34,16 +37,13 @@ zmodload zsh/mapfile
 
 # if mem_wrap is unset, default to 0 (disabled)
 [ -z "$mem_wrap" ] && {
-  mem_wrap=0
+  int mem_wrap
 }
 
 # streamfile defaults to /tmp/bf_streamfile if not user-defined
 [ -z "$streamfile" ] && {
   streamfile=/tmp/bf_streamfile
 }
-
-# alias integer to int for brevity
-alias int="integer"
 
 # array declarations
 declare -A tape # use associative array for tape as brainfuck expects 0-index
