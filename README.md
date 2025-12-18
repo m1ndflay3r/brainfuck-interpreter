@@ -27,7 +27,7 @@ You can use FIFO as streamfile for dynamic bytestream like so:
     mkfifo /tmp/brainfuck_stream
     streamfile=/tmp/brainfuck_stream /path/to/brainfuck/program.bf
 
-Data should be sent to the above FIFO in 1-byte increments as streamfile is reread on every byte (which is what allows for dynamic byte stream via FIFO to exist)
+Data should be sent to the above FIFO in 1-byte increments padded with null bytes equating to current streamfile offset value, as streamfile is reread on every byte (which is what allows for dynamic byte stream via FIFO to exist).
 
 
 An example program (helloworld.bf) is included with this interpreter for testing purposes.
