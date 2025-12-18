@@ -29,6 +29,9 @@ blank_printout() {
   return 1
 }
 
+# load zsh/mapfile for streamfile reading
+zmodload zsh/mapfile
+
 # streamfile defaults to /tmp/bf_streamfile if not user-defined
 [ -z "$streamfile" ] && {
   streamfile=/tmp/bf_streamfile
@@ -127,7 +130,7 @@ stream_read() {
   # while a bit inefficient, this method allows mid-program streamfile modification
   # and is more than fast enough for our purposes
   [[ -f "$streamfile" ]] && {
-    sr_working=${"$(<"$streamfile")":$stream_offset:1}
+    sr_working=${mapfile[$streamfile]:$stream_offset:1}
     ((stream_offset++))
     # if sr_working empty, treat as zero
     [ -z "$sr_working" ] && {
