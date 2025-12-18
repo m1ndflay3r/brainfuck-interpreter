@@ -146,7 +146,8 @@ stream_read() {
 ## main
 
 while true; do
-  [ -z "$bf_input" ] && break
+  # if bf_input is empty and program not killed, return 0 (success)
+  [ -z "$bf_input" ] && return 0
   # pop one char off input
   bf_working=${bf_input::1}
   bf_input=${bf_input:1}
@@ -169,7 +170,6 @@ while true; do
           # which according to brainfuck spec we must treat as a fatal error
           [ -z "$bf_input" ] && {
             print -u2 "FATAL: Unbalanced \'[\' (encountered r_jmp, but found no closing bracket)"
-            ((abortflag++))
             return 1
           }
           # pop next char off stack
