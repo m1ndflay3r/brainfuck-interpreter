@@ -19,3 +19,8 @@ Above example runs program.bf with file.txt as streamfile.
 
 Contents of specified streamfile can be modified mid-program and these changes will be detected.
 
+
+An example program (helloworld.bf) is included with this interpreter for testing purposes.
+
+You can run it like so:
+    ./bf_run helloworld.bf
