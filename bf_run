@@ -143,6 +143,54 @@ stream_read() {
   }
 }
 
+r_jmp() {
+  ((${tape[$pointer]:-0} == 0)) && {
+  ## jump if zero
+    # depth flag keeps track of nested loops
+    int depth=1
+    # loop repeats while depth >= 1
+    while ((depth > 0)); do
+      # if bf_input empty, we've reached end of program without discovering [
+      # which according to brainfuck spec we must treat as a fatal error
+      [ -z "$bf_input" ] && {
+        print -u2 "FATAL: Unbalanced \'[\' (encountered r_jmp, but found no closing bracket)"
+        ((abortflag++))
+      }
+      # pop next char off stack
+      local next_char=${bf_input::1}
+      bf_input=${bf_input:1}
+      # if next char is '[', we've encountered a nested loop and must increase depth counter
+      [[ "$next_char" = "[" ]] && {
+        ((depth++))
+      }
+      # if next char is ']', we've encountered closing brace and must decrease depth counter
+      [[ "$next_char" = "]" ]] && {
+        ((depth--))
+      }
+    done
+  } || {
+  ## else push stack
+    loop_stack+=("$bf_input")
+  }
+}
+
+l_jmp() {
+  ((${tape[$pointer]:-0} != 0)) && {
+  ## jump if not zero
+    # if loop stack empty, we haven't encountered '[' yet.
+    # according to brainfuck spec, we treat this as a fatal error
+    ((${#loop_stack} == 0)) && {
+      print -u2 "FATAL: Unbalanced \']\' (encountered l_jmp, but found no closing bracket)"
+      ((abortflag++))
+    }
+    # restore stack (revert to point of matching '[', thus completing l_jmp)
+    bf_input="${loop_stack[-1]}"
+  } || {
+  ## else pop stack
+    loop_stack[-1]=()
+  }
+}
+
 ## main
 
 while true; do
@@ -159,52 +207,8 @@ while true; do
     ('-') cell_decrement ;;
     ('.') print_cell ;;
     (',') stream_read ;;
-    ('[')
-      ((${tape[$pointer]:-0} == 0)) && {
-      ## jump if zero
-        # depth flag keeps track of nested loops
-        int depth=1
-        # loop repeats while depth >= 1
-        while ((depth > 0)); do
-          # if bf_input empty, we've reached end of program without discovering [
-          # which according to brainfuck spec we must treat as a fatal error
-          [ -z "$bf_input" ] && {
-            print -u2 "FATAL: Unbalanced \'[\' (encountered r_jmp, but found no closing bracket)"
-            return 1
-          }
-          # pop next char off stack
-          local next_char=${bf_input::1}
-          bf_input=${bf_input:1}
-          # if next char is '[', we've encountered a nested loop and must increase depth counter
-          [[ "$next_char" = "[" ]] && {
-            ((depth++))
-          }
-          # if next char is ']', we've encountered closing brace and must decrease depth counter
-          [[ "$next_char" = "]" ]] && {
-            ((depth--))
-          }
-        done
-      } || {
-      ## else push stack
-        loop_stack+=("$bf_input")
-      }
-    ;;
-    (']')
-      ((${tape[$pointer]:-0} != 0)) && {
-      ## jump if not zero
-        # if loop stack empty, we haven't encountered '[' yet.
-        # according to brainfuck spec, we treat this as a fatal error
-        ((${#loop_stack} == 0)) && {
-          print -u2 "FATAL: Unbalanced \']\' (encountered l_jmp, but found no closing bracket)"
-          return 1
-        }
-        # restore stack (revert to point of matching '[', thus completing l_jmp)
-        bf_input="${loop_stack[-1]}"
-      } || {
-      ## else pop stack
-        loop_stack[-1]=()
-      }
-    ;;
+    ('[') r_jmp ;;
+    (']') l_jmp ;;
   esac
   ((abortflag>=1)) && return 1
 done
