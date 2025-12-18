@@ -32,6 +32,11 @@ blank_printout() {
 # load zsh/mapfile for streamfile reading
 zmodload zsh/mapfile
 
+# if mem_wrap is unset, default to 0 (disabled)
+[ -z "$mem_wrap" ] && {
+  mem_wrap=0
+}
+
 # streamfile defaults to /tmp/bf_streamfile if not user-defined
 [ -z "$streamfile" ] && {
   streamfile=/tmp/bf_streamfile
@@ -75,13 +80,8 @@ pointer_decrement() {
   ((pointer==0)) && {
     # since this is emulated memory using arrays, we can semi-safely wrap without risking memory of other processes
     # typically, you should not do this, especially if your bf interpreter is written in a low-level lang
-    print -u2 "WARN: mem limit exceeded!"
-    print -u2 "There be monsters beyond this point."
-    print -n -u2 "Continue anyway? (N/y) "
-    # explicitly read from /dev/tty to avoid eating program input
-    read -k1 do_cont < /dev/tty
-    print -u2 # print newline after read for clean UI
-    [[ "$do_cont" = [yY] ]] && {
+    # hence, it's disabled by default
+    ((mem_wrap==1)) && {
       ((pointer=memlimit))
     } || {
       print -u2 "Segmentation Fault"
@@ -97,12 +97,8 @@ pointer_increment() {
   ((pointer==memlimit)) && {
     # since this is emulated mem using arrays, we can semi-safely wrap without risking the memory of other processes
     # typically, you should not do this, especially if your bf interpreter is written in a low-level lang
-    print -u2 "WARN: mem limit exceeded!"
-    print -u2 "There be monsters beyond this point."
-    print -n -u2 "Continue anyway? (N/y) "
-    read -k1 do_cont < /dev/tty
-    print -u2 # newline after read for clean U.I
-    [[ "$do_cont" = [yY] ]] && {
+    # hence, it's disabled by default
+    ((mem_wrap==1)) && {
       ((pointer=0))
     } || {
       print -u2 "Segmentation Fault"
