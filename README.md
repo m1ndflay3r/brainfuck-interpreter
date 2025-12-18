@@ -13,6 +13,10 @@ Flag 'memlimit' controls memory size in mb (default 1mb):
 
 Above example runs program.bf with 512mb memory
 
+Memory wrapping is disabled by default, but can be enabled by setting mem_wrap to 1 before launch, like so:
+
+    mem_wrap=1 ./bf_run /path/to/brainfuck/program.bf
+
 
 Flag 'streamfile' controls file to be used for byte stream (default /tmp/bf_streamfile):
 
