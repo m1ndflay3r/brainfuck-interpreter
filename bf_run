@@ -38,7 +38,7 @@ blank_printout() {
 alias int="integer"
 
 # array declarations
-declare -A tape
+declare -A tape # use associative array for tape as brainfuck expects 0-index
 declare -a loop_stack
 
 # variable declarations
