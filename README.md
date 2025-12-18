@@ -3,8 +3,8 @@ This is a [standard-spec](https://github.com/sunjay/brainfuck/blob/master/brainf
 
 Usage:
 
-    ./bf_run $brainfuck_program
     ./bf_run /path/to/brainfuck/program.bf
+    ./bf_run $brainfuck_program
 
 
 Flag 'memlimit' controls memory size in mb (default 1mb):
