@@ -18,6 +18,11 @@ Memory wrapping is disabled by default, but can be enabled by setting mem_wrap t
     mem_wrap=1 ./bf_run /path/to/brainfuck/program.bf
 
 
+Flag 'dyn_stream' enables reading bytes interactively instead of from streamfile (default 0):
+
+    dyn_stream=1 ./bf_run /path/to/brainfuck/program
+
+
 Flag 'streamfile' controls file to be used for byte stream (default /tmp/bf_streamfile):
 
     streamfile=/path/to/file.txt ./bf_run /path/to/brainfuck/program.bf
