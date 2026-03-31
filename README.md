@@ -18,23 +18,20 @@ Memory wrapping is disabled by default, but can be enabled by setting mem_wrap t
     mem_wrap=1 ./bf_run /path/to/brainfuck/program.bf
 
 
-Flag 'dyn_stream' enables reading bytes interactively instead of from streamfile (default 1):
+Flag 'streamfile' controls file to be used for byte stream:
 
-    dyn_stream=0 ./bf_run /path/to/brainfuck/program
-
-
-Flag 'streamfile' controls file to be used for byte stream (default /tmp/bf_streamfile):
-
-    dyn_stream=0 streamfile=/path/to/file.txt ./bf_run /path/to/brainfuck/program.bf
+    streamfile=/path/to/file.txt ./bf_run /path/to/brainfuck/program.bf
 
 Above example runs program.bf with file.txt as streamfile.
 
+If 'streamfile' is not set, bf_run will instead fetch bytes interactively.
+
 Contents of specified streamfile can be modified mid-program and these changes will be detected.
 
-You can use FIFO as streamfile for dynamic bytestream like so:
+You can use FIFO as streamfile for dynamic non-interactive bytestream like so:
 
     mkfifo /tmp/brainfuck_stream
-    dyn_stream=0 streamfile=/tmp/brainfuck_stream /path/to/brainfuck/program.bf
+    streamfile=/tmp/brainfuck_stream /path/to/brainfuck/program.bf
 
 Data should be sent to the above FIFO in 1-byte increments padded with null bytes equating to current streamfile offset value, as streamfile is reread on every byte (which is what allows for dynamic byte stream via FIFO to exist).
 
@@ -51,8 +48,8 @@ You can run it like so:
 
     ./bf_run examples/calculator.bf
 
-Another example program (stream.bf) is included with this interpreter for streamfile demonstration.
+Lastly, example program (stream.bf) is included with this interpreter for streamfile demonstration.
 
 You can run it like so:
 
-    dyn_stream=0 streamfile=examples/streamfile_ex ./bf_run examples/stream.bf
+    streamfile=examples/streamfile_ex ./bf_run examples/stream.bf
