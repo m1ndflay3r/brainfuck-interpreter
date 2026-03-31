@@ -26,6 +26,8 @@ Above example runs program.bf with file.txt as streamfile.
 
 If 'streamfile' is not set, bf_run will instead fetch bytes interactively.
 
+If 'streamfile' is set but doesnt exist, all byte stream calls will result in 0.
+
 Contents of specified streamfile can be modified mid-program and these changes will be detected.
 
 You can use FIFO as streamfile for dynamic non-interactive bytestream like so:
