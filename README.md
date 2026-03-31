@@ -13,9 +13,16 @@ Flag 'memlimit' controls memory size in mb (default 1mb):
 
 Above example runs program.bf with 512mb memory
 
-Memory wrapping is disabled by default, but can be enabled by setting mem_wrap to 1 before launch, like so:
+Memory wrapping is disabled by default, but can be enabled by setting 'mem_wrap' to 1 before launch, like so:
 
     mem_wrap=1 ./bf_run /path/to/brainfuck/program.bf
+
+
+By default, bf_run executes with an 8-bit bitmask, meaning cells wrap after 255 (this is accurate to brainfuck spec). However, there are times when it is much more useful to have a higher ceiling (such as with calculator.bf).
+
+Flag 'b32' addresses this. Set to a non-empty value to run in 32-bit mode instead (meaning cells wrap after 4294967295 instead):
+
+    b32=1 ./bf_run /path/to/brainfuck/program.bf
 
 
 Flag 'streamfile' controls file to be used for byte stream:
