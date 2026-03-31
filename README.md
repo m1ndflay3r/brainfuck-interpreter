@@ -45,8 +45,14 @@ You can run it like so:
 
     ./bf_run examples/helloworld.bf
 
+Another example program (calculator.bf) is included with this interpreter for testing purposes (https://github.com/dougaak/brainfuck-calculator).
+
+You can run it like so:
+
+    ./bf_run examples/calculator.bf
+
 Another example program (stream.bf) is included with this interpreter for streamfile demonstration.
 
 You can run it like so:
 
-    streamfile=examples/streamfile_ex ./bf_run examples/stream.bf
+    dyn_stream=0 streamfile=examples/streamfile_ex ./bf_run examples/stream.bf
