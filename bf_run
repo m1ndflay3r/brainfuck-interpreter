@@ -40,14 +40,19 @@ zmodload zsh/mapfile
   int mem_wrap
 }
 
+# if dyn_stream unset, default to 0 (disabled)
+[ -z "$dyn_stream" ] && {
+  int dyn_stream
+}
+
 # streamfile defaults to /tmp/bf_streamfile if not user-defined
 [ -z "$streamfile" ] && {
   streamfile=/tmp/bf_streamfile
 }
 
 # array declarations
-declare -A tape # use associative array for tape as brainfuck expects 0-index
-declare -a loop_stack
+typeset -A tape # use associative array for tape as brainfuck expects 0-index
+typeset -a loop_stack
 
 # variable declarations
 int pointer killflag stream_offset abortflag
@@ -123,32 +128,41 @@ cell_decrement() {
 
 # read byte from input stream
 stream_read() {
-  # while a bit inefficient, this method allows mid-program streamfile modification
-  # and is more than fast enough for our purposes
-  [[ -f "$streamfile" ]] && {
-    sr_working=${mapfile[$streamfile]:$stream_offset:1}
-    ((stream_offset++))
-    # if sr_working empty, treat as zero
-    [ -z "$sr_working" ] && {
-      tape[$pointer]=0
-    } || {
-      # conv sr_working to ascii, store in current cell
-      tape[$pointer]=$(printf "%d" "'$sr_working")
-    }
-  # if file not exist, treat as zero
+  # if dyn_stream enabled
+  ((dyn_stream)) && {
+    # read a char from user input
+    local char
+    read -r -s -k1 char
+    # conv char to ascii, store in current cell
+    tape[$pointer]=$(printf "%d" "'$char")
   } || {
-    tape[$pointer]=0
-    ((stream_offset++))
+    # while a bit inefficient, this method allows mid-program streamfile modification
+    # and is more than fast enough for our purposes
+    [[ -f "$streamfile" ]] && {
+      local sr_working=${mapfile[$streamfile]:$stream_offset:1}
+      ((stream_offset++))
+      # if sr_working empty, treat as zero
+      [ -z "$sr_working" ] && {
+        tape[$pointer]=0
+      } || {
+        # conv sr_working to ascii, store in current cell
+        tape[$pointer]=$(printf "%d" "'$sr_working")
+      }
+    # if file not exist, treat as zero
+    } || {
+      ((stream_offset++))
+      tape[$pointer]=0
+    }
   }
 }
 
 r_jmp() {
-  ((${tape[$pointer]:-0} == 0)) && {
+  ((${tape[$pointer]:-0}==0)) && {
   ## jump if zero
     # depth flag keeps track of nested loops
     int depth=1
     # loop repeats while depth >= 1
-    while ((depth > 0)); do
+    while ((depth>0)); do
       # if bf_input empty, we've reached end of program without discovering [
       # which according to brainfuck spec we must treat as a fatal error
       [ -z "$bf_input" ] && {
@@ -174,11 +188,11 @@ r_jmp() {
 }
 
 l_jmp() {
-  ((${tape[$pointer]:-0} != 0)) && {
+  ((${tape[$pointer]:-0}!=0)) && {
   ## jump if not zero
     # if loop stack empty, we haven't encountered '[' yet.
     # according to brainfuck spec, we treat this as a fatal error
-    ((${#loop_stack} == 0)) && {
+    ((${#loop_stack}==0)) && {
       print -u2 "FATAL: Unbalanced \']\' (encountered l_jmp, but found no closing bracket)"
       ((abortflag++))
     }
