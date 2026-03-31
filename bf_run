@@ -40,16 +40,14 @@ zmodload zsh/mapfile
   int mem_wrap
 }
 
-int dyn_stream
-
 # if dyn_stream unset, default to 1 (enabled)
 [ -z "$dyn_stream" ] && {
-  dyn_stream=1
+  int dyn_stream=1
 }
 
-# if streamfile is both set and exists, set dyn_stream to 0 (disabled)
-([ -z "$streamfile" ] || ! [ -f "$streamfile" ]) || {
-  dyn_stream=0
+# streamfile defaults to /tmp/bf_streamfile if not user-defined
+[ -z "$streamfile" ] && {
+  streamfile=/tmp/bf_streamfile
 }
 
 # array declarations
