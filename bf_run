@@ -59,7 +59,7 @@ typeset -A tape # use associative array for tape as brainfuck expects 0-index
 typeset -a loop_stack
 
 # variable declarations
-int pointer killflag stream_offset abortflag
+int pointer stream_offset abortflag
 
 # set memory limit to 1048576 (1mb) if undefined
 [ -z "$memlimit" ] && {
