@@ -53,7 +53,7 @@ You can run it like so:
 
     ./bf_run examples/helloworld.bf
 
-Another example program (calculator.bf) is included with this interpreter for testing purposes (https://github.com/dougaak/brainfuck-calculator).
+Another example program ([calculator.bf](https://github.com/dougaak/brainfuck-calculator)) is included with this interpreter for testing purposes.
 
 You can run it like so:
 
