@@ -67,7 +67,7 @@ int dyn_stream
   } || {
     which git &> /dev/null && {
       print -n "flag \'b64\' is set, but libalm not found. Download it now? (Y/n) "
-      read -k1 alm_response
+      read -k1 alm_response; [[ -z "$alm_response" ]] && alm_response=y
       case $alm_response in
         (n|N) return 1 ;;
           (*) git clone https://github.com/m1ndflay3r/libalm $HOME/.libalm ;;
