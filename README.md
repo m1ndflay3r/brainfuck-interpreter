@@ -20,15 +20,11 @@ Memory wrapping is disabled by default, but can be enabled by setting 'mem_wrap'
 
 By default, bf_run executes with an 8-bit bitmask, meaning cells wrap after 255 (this is accurate to brainfuck spec). However, there are times when it is much more useful to have a higher ceiling (such as with calculator.bf).
 
-Flag 'b32' addresses this. Set to a non-empty value to run in 32-bit mode instead (meaning cells wrap after 4294967295 instead):
+Flag 'bits' solves this. Set to 16, 32, 64, or 128 in order to modify bitmask.
 
-    b32=1 ./bf_run /path/to/brainfuck/program.bf
+    bits=32 ./bf_run /path/to/brainfuck/program.bf
 
-Alternatively, set flag 'b64' to run in 64-bit mode:
-
-    b64=1 ./bf_run /path/to/brainfuck/program.bf
-
-Note that 64-bit mode requires 'libalm' (https://github.com/m1ndflay3r/libalm) and will install it automatically if not found.
+Note that 64-bit/128-bit modes require 'libalm' (https://github.com/m1ndflay3r/libalm) and will prompt to install it if not found.
 
 
 Flag 'streamfile' controls file to be used for byte stream:
