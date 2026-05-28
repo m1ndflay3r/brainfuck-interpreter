@@ -50,9 +50,11 @@ int dyn_stream
 # if b32 not set, default to 8-bit, else use 32-bit
 [[ -z "$b32" ]] && {
   b32=255
+} || {; [[ "$b32" = 'b16' ]] && {
+  b32=0xffff
 } || {
   b32=0xffffffff
-}
+}; }
 
 # if b64 flag is set, use 64-bit cells (requires libalm)
 [[ ! -z "$b64" ]] && {
@@ -64,7 +66,12 @@ int dyn_stream
     source $HOME/.libalm/libalm
   } || {
     which git &> /dev/null && {
-      git clone https://github.com/m1ndflay3r/libalm $HOME/.libalm
+      print -n "flag \'b64\' is set, but libalm not found. Download it now? (Y/n) "
+      read -k1 alm_response
+      case $alm_response in
+        (n|N) return 1 ;;
+          (*) git clone https://github.com/m1ndflay3r/libalm $HOME/.libalm ;;
+      esac
       source $HOME/.libalm/libalm
     } || {
       return 1
