@@ -54,6 +54,26 @@ int dyn_stream
   b32=0xffffffff
 }
 
+# if b64 flag is set, use 64-bit cells (requires libalm)
+[[ ! -z "$b64" ]] && {
+  int b64=1
+  # locate libalm
+  [[ -f /usr/lib/libalm/libalm ]] && {
+    source /usr/lib/libalm/libalm
+  } || [[ -f $HOME/.libalm/libalm ]] && {
+    source $HOME/.libalm/libalm
+  } || {
+    which git &> /dev/null && {
+      git clone https://github.com/m1ndflay3r/libalm $HOME/.libalm
+      source $HOME/.libalm/libalm
+    } || {
+      return 1
+    }
+  }
+} || {
+  int b64
+}
+
 # array declarations
 typeset -A tape # use associative array for tape as brainfuck expects 0-index
 typeset -a loop_stack
@@ -121,13 +141,25 @@ pointer_increment() {
 # increment current cell
 cell_increment() {
   # we use bitmask to keep values within $b32, and uninitialized cells are treated as zero
-  ((tape[$pointer]=(${tape[$pointer]:-0}+1)&$b32))
+  ((b64)) && {
+    local pointer_out
+    hexmask=1 albm $((${tape[$pointer]:-0}+1)) ffffffffffffffff pointer_out
+    ((tape[$pointer]=$pointer_out))
+  } || {
+    ((tape[$pointer]=(${tape[$pointer]:-0}+1)&$b32))
+  }
 }
 
 # decrement current cell
 cell_decrement() {
   # we use bitmask to keep values within $b32, and uninitialized cells are treated as zero
-  ((tape[$pointer]=(${tape[$pointer]:-0}-1)&$b32))
+  ((b64)) && {
+    local pointer_out
+    hexmask=1 albm $((${tape[$pointer]:-0}-1)) ffffffffffffffff pointer_out
+    ((tape[$pointer]=$pointer_out))
+  } || {
+    ((tape[$pointer]=(${tape[$pointer]:-0}-1)&$b32))
+  }
 }
 
 # read byte from input stream
