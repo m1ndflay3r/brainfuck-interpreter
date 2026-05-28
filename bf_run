@@ -47,6 +47,14 @@ int dyn_stream
   dyn_stream=1
 }
 
+# use master flag for cleanness
+[[ -z "$bits" ]] && bits=8
+case $bits in
+  (16) b32=b16 ;;
+  (32) b32=1 ;;
+  (64) b64=1 ;;
+esac
+
 # if b32 not set, default to 8-bit, else use 32-bit
 [[ -z "$b32" ]] && {
   b32=255
