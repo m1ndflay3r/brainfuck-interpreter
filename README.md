@@ -24,6 +24,12 @@ Flag 'b32' addresses this. Set to a non-empty value to run in 32-bit mode instea
 
     b32=1 ./bf_run /path/to/brainfuck/program.bf
 
+Alternatively, set flag 'b64' to run in 64-bit mode:
+
+    b64=1 ./bf_run /path/to/brainfuck/program.bf
+
+Note that 64-bit mode requires 'libalm' (https://github.com/m1ndflay3r/libalm) and will install it automatically if not found.
+
 
 Flag 'streamfile' controls file to be used for byte stream:
 
