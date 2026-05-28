@@ -24,7 +24,7 @@ Flag 'bits' solves this. Set to 16, 32, 64, or 128 in order to modify bitmask.
 
     bits=32 ./bf_run /path/to/brainfuck/program.bf
 
-Note that 64-bit/128-bit modes require 'libalm' (https://github.com/m1ndflay3r/libalm) and will prompt to install it if not found.
+Note that 64-bit/128-bit modes require [libalm](https://github.com/m1ndflay3r/libalm) and will prompt to install it if not found.
 
 
 Flag 'streamfile' controls file to be used for byte stream:
