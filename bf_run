@@ -142,7 +142,7 @@ pointer_increment() {
 cell_increment() {
   # we use bitmask to keep values within $b32, and uninitialized cells are treated as zero
   ((b64)) && {
-    local pointer_out
+    local -i pointer_out
     hexmask=1 albm $((${tape[$pointer]:-0}+1)) ffffffffffffffff pointer_out
     tape[$pointer]=$pointer_out
   } || {
@@ -154,7 +154,7 @@ cell_increment() {
 cell_decrement() {
   # we use bitmask to keep values within $b32, and uninitialized cells are treated as zero
   ((b64)) && {
-    local pointer_out
+    local -i pointer_out
     hexmask=1 albm $((${tape[$pointer]:-0}-1)) ffffffffffffffff pointer_out
     tape[$pointer]=$pointer_out
   } || {
