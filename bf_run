@@ -47,12 +47,17 @@ int dyn_stream
   dyn_stream=1
 }
 
+bmask64='ffffffffffffffff'
+
 # use master flag for cleanness
 [[ -z "$bits" ]] && bits=8
 case $bits in
   (16) b32=b16 ;;
   (32) b32=1 ;;
   (64) b64=1 ;;
+ (128) {
+    b64=1; bmask64='ffffffffffffffffffffffffffffffff'
+  } ;;
 esac
 
 # if b32 not set, default to 8-bit, else use 32-bit
@@ -160,7 +165,7 @@ pointer_increment() {
 ((b64)) && {
   cell_increment() {
     local -i pointer_out
-    hexmask=1 albm $((${tape[$pointer]:-0}+1)) ffffffffffffffff pointer_out # use libalm to apply 64-bit bitmask
+    hexmask=1 albm $((${tape[$pointer]:-0}+1)) $bmask64 pointer_out # use libalm to apply 64-bit bitmask
     tape[$pointer]=$pointer_out
   }
 } || {
@@ -173,7 +178,7 @@ pointer_increment() {
 ((b64)) && {
   cell_decrement() {
     local -i pointer_out
-    hexmask=1 albm $((${tape[$pointer]:-0}-1)) ffffffffffffffff pointer_out # use libalm to apply 64-bit bitmask
+    hexmask=1 albm $((${tape[$pointer]:-0}-1)) $bmask64 pointer_out # use libalm to apply 64-bit bitmask
     tape[$pointer]=$pointer_out
   }
 } || {
