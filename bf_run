@@ -16,18 +16,18 @@ blank_printout() {
 }
 
 # initial blank check
-[ -z "$bf_input" ] && {
+[[ -z "$bf_input" ]] && {
   blank_printout
   return 1
 }
 
 # if input is file, read from file and make new input
-[ -f "$bf_input" ] && {
+[[ -f "$bf_input" ]] && {
   bf_input=$(<"$bf_input")
 }
 
 # run blank check twice in case file is empty
-[ -z "$bf_input" ] && {
+[[ -z "$bf_input" ]] && {
   blank_printout
   return 1
 }
@@ -36,19 +36,19 @@ blank_printout() {
 zmodload zsh/mapfile
 
 # if mem_wrap is unset, default to 0 (disabled)
-[ -z "$mem_wrap" ] && {
+[[ -z "$mem_wrap" ]] && {
   int mem_wrap
 }
 
 int dyn_stream
 
 # if streamfile not set, enable dyn_stream
-[ -z "$streamfile" ] && {
+[[ -z "$streamfile" ]] && {
   dyn_stream=1
 }
 
 # if b32 not set, default to 8-bit, else use 32-bit
-[ -z "$b32" ] && {
+[[ -z "$b32" ]] && {
   b32=255
 } || {
   b32=0xffffffff
@@ -82,7 +82,7 @@ typeset -a loop_stack
 int pointer stream_offset abortflag
 
 # set memory limit to 1048576 (1mb) if undefined
-[ -z "$memlimit" ] && {
+[[ -z "$memlimit" ]] && {
   int memlimit=1048576
 # else, set memlimit to 1048576 X memlimit
 } || {
@@ -138,27 +138,32 @@ pointer_increment() {
   }
 }
 
+# Note: two versions of both cell_increment and cell_decrement exist, depending on whether b64 is enabled.
+# This results in significantly faster execution times at the cost of a slightly longer startup time.
+
 # increment current cell
-cell_increment() {
-  # we use bitmask to keep values within $b32, and uninitialized cells are treated as zero
-  ((b64)) && {
+((b64)) && {
+  cell_increment() {
     local -i pointer_out
-    hexmask=1 albm $((${tape[$pointer]:-0}+1)) ffffffffffffffff pointer_out
+    hexmask=1 albm $((${tape[$pointer]:-0}+1)) ffffffffffffffff pointer_out # use libalm to apply 64-bit bitmask
     tape[$pointer]=$pointer_out
-  } || {
-    ((tape[$pointer]=(${tape[$pointer]:-0}+1)&$b32))
+  }
+} || {
+  cell_increment() {
+    ((tape[$pointer]=(${tape[$pointer]:-0}+1)&$b32)) # use bitmask to keep values within $b32; uninitialized cells are treated as zero
   }
 }
 
 # decrement current cell
-cell_decrement() {
-  # we use bitmask to keep values within $b32, and uninitialized cells are treated as zero
-  ((b64)) && {
+((b64)) && {
+  cell_decrement() {
     local -i pointer_out
-    hexmask=1 albm $((${tape[$pointer]:-0}-1)) ffffffffffffffff pointer_out
+    hexmask=1 albm $((${tape[$pointer]:-0}-1)) ffffffffffffffff pointer_out # use libalm to apply 64-bit bitmask
     tape[$pointer]=$pointer_out
-  } || {
-    ((tape[$pointer]=(${tape[$pointer]:-0}-1)&$b32))
+  }
+} || {
+  cell_decrement() {
+    ((tape[$pointer]=(${tape[$pointer]:-0}-1)&$b32)) # use bitmask to keep values within $b32; uninitialized cells are treated as zero
   }
 }
 
@@ -178,7 +183,7 @@ stream_read() {
       local sr_working=${mapfile[$streamfile]:$stream_offset:1}
       ((stream_offset++))
       # if sr_working empty, treat as zero
-      [ -z "$sr_working" ] && {
+      [[ -z "$sr_working" ]] && {
         tape[$pointer]=0
       } || {
         # conv sr_working to ascii, store in current cell
@@ -201,7 +206,7 @@ r_jmp() {
     while ((depth>0)); do
       # if bf_input empty, we've reached end of program without discovering [
       # which according to brainfuck spec we must treat as a fatal error
-      [ -z "$bf_input" ] && {
+      [[ -z "$bf_input" ]] && {
         print -u2 "FATAL: Unbalanced \'[\' (encountered r_jmp, but found no closing bracket)"
         ((abortflag++))
       }
@@ -244,7 +249,7 @@ l_jmp() {
 
 while true; do
   # if bf_input is empty and program not killed, return 0 (success)
-  [ -z "$bf_input" ] && return 0
+  [[ -z "$bf_input" ]] && return 0
   # pop one char off input
   bf_working=${bf_input::1}
   bf_input=${bf_input:1}
